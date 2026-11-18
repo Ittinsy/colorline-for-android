@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>七彩连珠</title>
+<style>
+:root{--u:min(1vw,5.2px);color-scheme:light}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+html,body{margin:0;background:#f0f0f0;overscroll-behavior:none}
+body{
+  padding:max(6px,env(safe-area-inset-top)) env(safe-area-inset-right) max(10px,env(safe-area-inset-bottom)) env(safe-area-inset-left);
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei","Heiti SC",sans-serif;color:#000;touch-action:manipulation;
+}
+#app{max-width:520px;margin:0 auto}
+
+/* ---- 顶部：再来 / 后悔 / 困难 ---- */
+.top{display:flex;align-items:center;gap:calc(var(--u)*2.5);padding:calc(var(--u)*2) calc(var(--u)*2.5) calc(var(--u)*3)}
+.win{
+  flex:0 0 calc(var(--u)*29);height:calc(var(--u)*13);padding:0;margin:0;cursor:pointer;
+  background:#efefef;border:2px solid;border-color:#fff #404040 #404040 #fff;
+  box-shadow:inset -1px -1px 0 #808080,inset 1px 1px 0 #dfdfdf;
+  font-family:"STXingkai","Xingkai SC","华文行楷","STKaiti","Kaiti SC","KaiTi","楷体","FZShuTi",serif;
+  font-weight:900;font-size:calc(var(--u)*8.2);letter-spacing:.04em;color:#111;position:relative;
+}
+.win.def{outline:1px solid #000}
+.win.def::after{content:"";position:absolute;inset:calc(var(--u)*1.6);border:1px dotted #000;pointer-events:none}
+.win:active:not(:disabled){border-color:#404040 #fff #fff #404040;box-shadow:inset 1px 1px 0 #808080;padding:2px 0 0 2px}
+.win:disabled{color:#8a8a8a;text-shadow:1px 1px 0 #fff;cursor:default}
+.chk{flex:1;min-width:0;display:flex;align-items:center;gap:calc(var(--u)*2);height:calc(var(--u)*13);padding-left:calc(var(--u)*1);cursor:pointer;font-size:calc(var(--u)*6.2);white-space:nowrap}
+.chk .dot{flex:0 0 auto;width:calc(var(--u)*5.6);height:calc(var(--u)*5.6);border-radius:50%;border:2px solid #2d5aa8;background:#fff}
+.chk[aria-checked="true"] .dot{background:#4472c4;box-shadow:inset 0 0 0 2px #fff}
+.chk.dis{opacity:.45;cursor:default}
+
+/* ---- 棋盘 ---- */
+.frame{margin:0 calc(var(--u)*1.2);padding:2px;border:2px solid;border-color:#808080 #fff #fff #808080;background:#d8d8d8}
+#board{display:block;width:100%;aspect-ratio:1/1;touch-action:none;background:#8f8e80}
+
+/* ---- 底部：下一组 + 数码管 ---- */
+.bottom{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*5);padding:calc(var(--u)*3.5) calc(var(--u)*2.5) 0;align-items:stretch}
+.nextbox{background:#ececec;padding:calc(var(--u)*2) calc(var(--u)*2.5) calc(var(--u)*2.5)}
+.nextbox .lbl{font-size:calc(var(--u)*5.6);margin-bottom:calc(var(--u)*1.5)}
+.sunk{border:2px solid;border-color:#808080 #fff #fff #808080;background:#8f8e80;padding:2px}
+#next{display:block;width:100%;aspect-ratio:3/1}
+.leds{display:flex;flex-direction:column;justify-content:space-between;gap:calc(var(--u)*5);background:#ececec;padding:calc(var(--u)*2) calc(var(--u)*2.5)}
+.led{
+  display:block;width:100%;margin:0;height:calc(var(--u)*11);padding:0 calc(var(--u)*2.5);background:#000;border:2px solid;border-color:#808080 #fff #fff #808080;
+  font:700 calc(var(--u)*7.4)/calc(var(--u)*10) "Courier New",Courier,monospace;text-align:right;white-space:nowrap;overflow:hidden;
+}
+button.led{cursor:pointer}
+.red{color:#f00}.green{color:#0f0}
+
+/* ---- 经典风格对话框 ---- */
+#mask{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
+#mask.on{display:flex}
+.dlg{width:min(86vw,360px);background:#ececec;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:inset -1px -1px 0 #808080,3px 4px 0 rgba(0,0,0,.35)}
+.dlg .tt{background:linear-gradient(90deg,#0a246a,#a6caf0);color:#fff;font-weight:700;font-size:16px;padding:5px 8px}
+.dlg .bd{display:flex;gap:14px;align-items:center;padding:18px 16px 10px;font-size:17px;line-height:1.5}
+.dlg .ic{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:#2a5db0;color:#fff;font:700 22px/34px Georgia,serif;text-align:center}
+.dlg .tx{flex:1;min-width:0;word-break:break-all}
+.dlg input{display:block;width:calc(100% - 32px);margin:0 16px 8px;padding:8px;font-size:18px;border:2px solid;border-color:#808080 #fff #fff #808080;background:#fff;user-select:text;-webkit-user-select:text;border-radius:0}
+.dlg .bt{display:flex;justify-content:center;gap:12px;padding:8px 16px 16px}
+.dlg .bt button{min-width:84px;height:40px;font-size:17px;background:#efefef;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:inset -1px -1px 0 #808080;color:#000}
+.dlg .bt button:active{border-color:#404040 #fff #fff #404040}
+.rank{padding:10px 18px 4px;font-size:18px}
+.rank .row{display:flex;gap:10px;padding:7px 0;border-bottom:1px dotted #999}
+.rank .row b{flex:0 0 1.6em}.rank .row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .row i{font-style:normal;font-family:"Courier New",monospace;font-weight:700}
+.rank h4{margin:0 0 4px;font-size:16px;font-weight:400;color:#444}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <button id="btnNew" class="win def" type="button">再来</button>
+    <button id="btnUndo" class="win" type="button" disabled>后悔</button>
+    <div id="chk" class="chk" role="checkbox" aria-checked="false" tabindex="0"><span class="dot"></span><span>困难</span></div>
+  </div>
+  <div class="frame"><canvas id="board"></canvas></div>
+  <div class="bottom">
+    <div class="nextbox"><div class="lbl">下一组：</div><div class="sunk"><canvas id="next"></canvas></div></div>
+    <div class="leds">
+      <button id="best" class="led red" type="button" aria-label="排行榜">0</button>
+      <div id="score" class="led green">0</div>
+    </div>
+  </div>
+</div>
+<div id="mask"></div>
+
+<script>
+(() => {
+'use strict';
+/* ====================================================================
+ * 七彩连珠 网页复刻
+ * 规则与出球算法按原版 exe 逆向结果移植（GenColors / PlacePos / PlaceHard /
+ * CommitBalls / CheckLines / 路径搜索 / 计分 / 悔棋 / 排行榜），难度只保留
+ * 「休闲」(LEVEL 1，默认) 与「困难」=原版“挑战”(LEVEL 2)。
+ * 动画时长取自原版：落球 28→32→36→40px 每帧31ms；消球 36→32→28→消失 每帧31ms；
+ * 走子每格48ms；选中的球以60ms为周期按 36/32/28/32/36/40 缩放。
+ * ==================================================================== */
+const CAP = 99999999, SP_PLACE = 31, SP_MOVE = 48, SP_CLEAR = 31;
+const KEY = 'qicai-lianzhu-v1', CK = 'qclz_v1';
+const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];          // 上 下 左 右（与原版方向表同序）
+const COL = [null,
+  {hi:'#ff9c84',mid:'#c42212',lo:'#4a0500'},   // 1 红
+  {hi:'#ffeaa6',mid:'#e2a13a',lo:'#6e4204'},   // 2 金
+  {hi:'#a4ff94',mid:'#1fbd1f',lo:'#06440a'},   // 3 绿
+  {hi:'#93a0ff',mid:'#2424c2',lo:'#08084e'},   // 4 蓝
+  {hi:'#ffa6f2',mid:'#d02cb4',lo:'#560a4a'},   // 5 洋红
+  {hi:'#a6faff',mid:'#1eb2c8',lo:'#04404a'},   // 6 青
+  {hi:'#ffffff',mid:'#d6d6d6',lo:'#666666'}];  // 7 银白
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rnd = n => Math.floor(Math.random() * n);
+const ci = (r, k) => (r - 1) * 9 + (k - 1);
+const inb = (r, k) => r >= 1 && r <= 9 && k >= 1 && k <= 9;
+
+/* ---------------- 状态 ---------------- */
+const defHS = () => ({1: Array.from({length:5}, () => ['noname', 0]), 2: Array.from({length:5}, () => ['noname', 0])});
+let G;
+G = fresh();
+function fresh() {
+  return { board: Array(81).fill(0), recs: [0,1,2].map(() => ({c:0, r:1, k:1})), level: 1, score: 0, tag: 0,
+           tab: Array(10).fill(0), undo: null, undoOn: false, src: [1,1], dst: [9,9], hs: (G && G.hs) || defHS() };
+}
+let busy = false, sel = null, ov = new Map(), floating = null;
+let bTimer = null, bC = 2, bDir = 1, selSize = 40;
+
+/* ---------------- 出球算法（已与原机器码对拍） ---------------- */
+const empties = () => G.board.reduce((n, v) => n + (v === 0 ? 1 : 0), 0);
+function genColors() { for (const r of G.recs) r.c = rnd(7) + 1; }
+function placePos(start) {                         // 0x44ceac
+  const R = G.recs;
+  for (let i = start; i < 3; i++) {
+    const cnt = empties();
+    if (cnt === 0) { R[i].c = 0; continue; }
+    let k = rnd(cnt), idx = 0;
+    for (; idx < 81; idx++) if (G.board[idx] === 0 && k-- === 0) break;
+    R[i].r = (idx / 9 | 0) + 1; R[i].k = idx % 9 + 1;
+    G.board[idx] = R[i].c;                          // 临时占位
+  }
+  for (let i = start; i < 3; i++) if (R[i].c > 0) G.board[ci(R[i].r, R[i].k)] = 0;
+}
+function placeHard() {                             // 0x44cfd0（挑战/困难）
+  const R = G.recs; let bl = 0;
+  if (G.tab[rnd(10)] === 1 && G.tag === 1) {
+    bl = 1;
+    if (empties() === 0) R[0].c = 0;
+    else { R[0].r = G.src[0]; R[0].k = G.src[1]; G.board[ci(G.src[0], G.src[1])] = R[0].c; }   // 球1补在刚离开的格子
+    if (empties() === 0) R[1].c = 0;
+    else {
+      const free = [];
+      for (const [dr, dc] of DIRS) { const r = G.dst[0] + dr, k = G.dst[1] + dc; if (inb(r, k) && G.board[ci(r, k)] === 0) free.push([r, k]); }
+      if (free.length) {                           // 球2落在刚走到的球的上下左右空格
+        const [r, k] = free[rnd(free.length)];
+        R[1].r = r; R[1].k = k; G.board[ci(r, k)] = R[1].c; bl = 2;
+      }
+    }
+  }
+  placePos(bl);
+  for (const x of R) if (x.c > 0) G.board[ci(x.r, x.k)] = 0;
+}
+
+/* ---------------- 路径（BFS 距离场 + 按 上/下/左/右 顺序回溯） ---------------- */
+function findPath(src, dst) {
+  const dist = Array(81).fill(0), q = [src]; dist[ci(...src)] = 1;
+  for (let h = 0; h < q.length; h++) {
+    const [r, k] = q[h];
+    for (const [dr, dc] of DIRS) {
+      const nr = r + dr, nc = k + dc;
+      if (inb(nr, nc) && G.board[ci(nr, nc)] === 0 && dist[ci(nr, nc)] === 0) { dist[ci(nr, nc)] = dist[ci(r, k)] + 1; q.push([nr, nc]); }
+    }
+  }
+  const D = dist[ci(...dst)]; if (!D) return null;
+  const maxlen = Math.abs(D - 1), path = [];
+  (function dfs(r, k) {
+    const d = Math.abs(D - dist[ci(r, k)]);
+    if (d > maxlen) return false;
+    if (r === dst[0] && k === dst[1]) return true;
+    for (let i = 0; i < 4; i++) {
+      const nr = r + DIRS[i][0], nc = k + DIRS[i][1];
+      if (inb(nr, nc) && G.board[ci(nr, nc)] === 0 && Math.abs(D - dist[ci(nr, nc)]) < d) { path.push(i); if (dfs(nr, nc)) return true; path.pop(); }
+    }
+    return false;
+  })(src[0], src[1]);
+  return path;
+}
+
+/* ---------------- 消行 + 计分（0x44dadc） ---------------- */
+async function checkLines(r, k, flag) {
+  const color = G.board[ci(r, k)]; if (!color) return false;
+  const cells = []; let sum = 0;
+  for (const [dr, dc] of [[1,0],[0,1],[1,1],[1,-1]]) {
+    const line = [];
+    for (const s of [1, -1]) {
+      let rr = r + dr * s, cc = k + dc * s;
+      while (inb(rr, cc) && G.board[ci(rr, cc)] === color) { line.push([rr, cc]); rr += dr * s; cc += dc * s; }
+    }
+    if (line.length >= 4) { cells.push(...line); sum += line.length; }
+  }
+  if (sum < 4) return false;
+  cells.push([r, k]); const n = sum + 1;
+  if (flag) for (const [rr, cc] of cells) for (const x of G.recs) if (x.r === rr && x.k === cc) x.c = 0;
+  for (const sz of [36, 32, 28, 0]) { for (const [rr, cc] of cells) ov.set(ci(rr, cc), sz); render(); await sleep(SP_CLEAR); }
+  for (const [rr, cc] of cells) G.board[ci(rr, cc)] = 0;
+  ov.clear(); render();
+  if (!flag || G.level === 0) {                    // 新落的球自己连线：仅初学档计分（本版没有初学档）
+    G.score += Math.floor(5 * (n - 4) * (n - 3) / 2) + 5;   // +5 = 原版“额外分”(显示位置关闭)
+    if (G.score > CAP) { G.score = CAP; ui(); await alertDlg('你好厉害！我再没有能力给你加分了！'); }
+  }
+  ui();
+  return true;
+}
+
+/* ---------------- 落球（0x44d320） ---------------- */
+async function commit() {
+  if (G.level === 1) placePos(0); else placeHard();
+  const placed = [];
+  for (const x of G.recs) if (x.c > 0) { const i = ci(x.r, x.k); if (G.board[i] === 0) { G.board[i] = x.c; placed.push(i); } }
+  for (const sz of [28, 32, 36, 40]) { placed.forEach(i => ov.set(i, sz)); render(); await sleep(SP_PLACE); }
+  ov.clear(); render();
+  for (const x of G.recs) if (x.c > 0) await checkLines(x.r, x.k, true);
+}
+
+/* ---------------- 流程 ---------------- */
+async function doMove(src, dst, path) {
+  stopBounce(); const color = G.board[ci(...src)];
+  G.undo = { board: G.board.slice(), recs: G.recs.map(x => ({...x})), score: G.score };
+  G.undoOn = G.score > 30;
+  G.tag = 1; G.src = src; G.dst = dst; sel = null; ui();
+  let [r, k] = src; ov.set(ci(r, k), 0); floating = {r, k, color};
+  for (const d of path) { r += DIRS[d][0]; k += DIRS[d][1]; floating.r = r; floating.k = k; render(); await sleep(SP_MOVE); }
+  G.board[ci(...dst)] = color; G.board[ci(...src)] = 0; floating = null; ov.clear(); render();
+  const hit = await checkLines(dst[0], dst[1], false);
+  if (!hit) {
+    await commit();
+    if (empties() === 0) { await newClick(); return; }      // 棋盘满了：原版自动触发“再来”
+    genColors();
+  }
+  ui(); save();
+}
+async function newGame() {
+  const list = G.hs[G.level];
+  if (list[4][1] < G.score) {
+    const name = await promptDlg('恭喜！你进入了排行榜，请键入你的名字', 'noname');
+    if (name && name.length > 0) {
+      let p = list.findIndex(e => e[1] < G.score); if (p < 0) p = 4;
+      list.splice(p, 0, [name.slice(0, 12), G.score]); list.length = 5;
+      save(); await rankDlg();
+    }
+  } else if (G.tag === 1) await alertDlg('挑战失败!别泄气哟!');
+  G.tag = 0; G.board.fill(0); G.score = 0; G.undo = null; G.undoOn = false; sel = null; stopBounce(); ov.clear(); floating = null;
+  G.tab.fill(0); for (let i = 0; i < 3; i++) G.tab[rnd(10)] = 1;      // 困难档“刁难”概率表（1~3个槽）
+  G.recs.forEach(x => x.c = 0); ui(); render();
+  genColors(); await commit();
+  genColors(); G.recs[G.level].c = 0; await commit();               // 开局共 5 球
+  genColors(); ui(); save();
+}
+async function newClick() {
+  if (G.score > 0 && !(await confirmDlg('重新开始吗？'))) return;
+  await newGame();
+}
+
+/* ---------------- 选中球跳动动画（Timer1, 60ms） ---------------- */
+function startBounce() {
+  stopBounce(); bC = 2; bDir = 1; selSize = 40;
+  bTimer = setInterval(() => {
+    selSize = [0, 40, 36, 32, 28][bC]; render();
+    bDir ? bC++ : bC--;
+    if (bC <= 1) bDir = 1;
+    if (bC >= 4) bDir = 0;
+  }, 60);
+}
+function stopBounce() { if (bTimer) clearInterval(bTimer); bTimer = null; selSize = 40; }
+
+/* ---------------- 绘制 ---------------- */
+const dpr = () => Math.min(window.devicePixelRatio || 1, 3);
+function drawBall(ctx, x, y, d, v) {
+  const R = d / 2, c = COL[v];
+  ctx.fillStyle = 'rgba(0,0,0,.30)'; ctx.beginPath(); ctx.ellipse(x + R * .12, y + R * .16, R * .98, R * .94, 0, 0, 7); ctx.fill();
+  const g = ctx.createRadialGradient(x - R * .36, y - R * .42, R * .08, x - R * .05, y - R * .05, R * 1.05);
+  g.addColorStop(0, c.hi); g.addColorStop(.42, c.mid); g.addColorStop(1, c.lo);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.ellipse(x - R * .38, y - R * .44, R * .22, R * .13, -.6, 0, 7); ctx.fill();
+}
+function render() {
+  const cv = $('board'), ctx = cv.getContext('2d'), S = cv.width, cs = S / 9, lw = Math.max(1, Math.round(dpr()));
+  ctx.fillStyle = '#8f8e80'; ctx.fillRect(0, 0, S, S);
+  ctx.strokeStyle = '#000'; ctx.lineWidth = lw; ctx.beginPath();
+  for (let i = 1; i < 9; i++) { const p = Math.round(i * cs); ctx.moveTo(p, 0); ctx.lineTo(p, S); ctx.moveTo(0, p); ctx.lineTo(S, p); }
+  ctx.stroke(); ctx.lineWidth = lw * 2; ctx.strokeRect(lw, lw, S - 2 * lw, S - 2 * lw);
+  const dia = sz => cs * .8 * sz / 40;
+  for (let i = 0; i < 81; i++) {
+    const v = G.board[i]; if (!v) continue;
+    let sz = 40;
+    if (ov.has(i)) sz = ov.get(i); else if (sel && ci(sel.r, sel.k) === i) sz = selSize;
+    if (sz > 0) drawBall(ctx, (i % 9 + .5) * cs, ((i / 9 | 0) + .5) * cs, dia(sz), v);
+  }
+  if (floating) drawBall(ctx, (floating.k - .5) * cs, (floating.r - .5) * cs, dia(40), floating.color);
+  const nv = $('next'), nc = nv.getContext('2d'), w = nv.width, h = nv.height;
+  nc.fillStyle = '#8f8e80'; nc.fillRect(0, 0, w, h);
+  G.recs.forEach((x, i) => { if (x.c > 0) drawBall(nc, (i + .5) * w / 3, h / 2, h * .8, x.c); });
+}
+function fit() {
+  for (const id of ['board', 'next']) {
+    const c = $(id), r = c.getBoundingClientRect(), d = dpr();
+    c.width = Math.max(10, Math.round(r.width * d)); c.height = Math.max(10, Math.round(r.height * d));
+  }
+  render();
+}
+function ui() {
+  $('score').textContent = G.score; $('best').textContent = G.hs[G.level][0][1];
+  $('btnUndo').disabled = !G.undoOn;
+  const c = $('chk'); c.setAttribute('aria-checked', G.level === 2 ? 'true' : 'false'); c.classList.toggle('dis', G.tag === 1);
+}
+
+/* ---------------- 对话框（经典 Windows 风格） ---------------- */
+function dlg({msg, icon, buttons, input, html, title}) {
+  return new Promise(res => {
+    const m = $('mask');
+    m.innerHTML = '<div class="dlg" role="dialog"><div class="tt"></div>' +
+      (html ? '<div class="rank"></div>' : '<div class="bd"><div class="ic"></div><div class="tx"></div></div>') +
+      (input != null ? '<input id="dlgIn" maxlength="12" autocomplete="off">' : '') + '<div class="bt"></div></div>';
+    m.querySelector('.tt').textContent = title || '七彩连珠';
+    if (html) m.querySelector('.rank').innerHTML = html; else { m.querySelector('.ic').textContent = icon; m.querySelector('.tx').textContent = msg; }
+    const inp = m.querySelector('#dlgIn'); if (inp) inp.value = input;
+    buttons.forEach((t, i) => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = t;
+      b.onclick = () => { const v = inp ? inp.value.trim() : null; m.classList.remove('on'); m.innerHTML = ''; res({btn: i, text: v}); };
+      m.querySelector('.bt').appendChild(b);
+    });
+    m.classList.add('on');
+    if (inp) setTimeout(() => { inp.focus(); inp.select(); }, 60);
+  });
+}
+const alertDlg = msg => dlg({msg, icon: 'i', buttons: ['确定']});
+const confirmDlg = async msg => (await dlg({msg, icon: '?', buttons: ['是', '否']})).btn === 0;
+const promptDlg = async (msg, def) => { const r = await dlg({msg, icon: '?', buttons: ['确定', '取消'], input: def}); return r.btn === 0 ? r.text : null; };
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rankDlg = () => dlg({title: '七彩连珠--排行榜', buttons: ['返回'],
+  html: '<h4>' + (G.level === 2 ? '困难' : '休闲') + '</h4>' +
+        G.hs[G.level].map((e, i) => `<div class="row"><b>${i + 1}.</b><span>${esc(e[0])}</span><i>${e[1]}</i></div>`).join('')});
+
+/* ---------------- 存档：localStorage 为主，cookie 备份 ---------------- */
+function save() {
+  const s = JSON.stringify({v: 1, board: G.board.join(''), recs: G.recs.map(x => [x.c, x.r, x.k]), level: G.level, score: G.score, tag: G.tag,
+    tab: G.tab.join(''), undoOn: G.undoOn, undo: G.undo && {board: G.undo.board.join(''), recs: G.undo.recs.map(x => [x.c, x.r, x.k]), score: G.undo.score},
+    src: G.src, dst: G.dst, hs: G.hs});
+  try { localStorage.setItem(KEY, s); } catch (e) {}
+  try { if (window.AndroidStore) AndroidStore.set(s); } catch (e) {}
+  try { const e = encodeURIComponent(s); if (e.length < 3800) document.cookie = CK + '=' + e + ';max-age=31536000;path=' + location.pathname.replace(/[^/]*$/, '') + ';SameSite=Lax'; } catch (e) {}
+}
+function load() {
+  let s = null;
+  try { s = localStorage.getItem(KEY); } catch (e) {}
+  if (!s) try { if (window.AndroidStore) s = AndroidStore.get() || null; } catch (e) {}
+  if (!s) try { const m = document.cookie.split('; ').find(x => x.startsWith(CK + '=')); if (m) s = decodeURIComponent(m.slice(CK.length + 1)); } catch (e) {}
+  if (!s) return false;
+  try {
+    const o = JSON.parse(s), digits = (t, n) => typeof t === 'string' && t.length === n && /^[0-7]+$/.test(t);
+    if (!digits(o.board, 81) || !digits(o.tab, 10) && !/^[01]{10}$/.test(o.tab) || !Array.isArray(o.recs) || o.recs.length !== 3) return false;
+    const rc = a => a.map(x => ({c: x[0] | 0, r: x[1] | 0, k: x[2] | 0}));
+    G = { board: o.board.split('').map(Number), recs: rc(o.recs), level: o.level === 2 ? 2 : 1, score: Math.min(CAP, Math.max(0, o.score | 0)), tag: o.tag ? 1 : 0,
+          tab: o.tab.split('').map(Number), undoOn: !!o.undoOn, undo: o.undo ? {board: o.undo.board.split('').map(Number), recs: rc(o.undo.recs), score: o.undo.score | 0} : null,
+          src: o.src || [1,1], dst: o.dst || [9,9], hs: o.hs && o.hs[1] && o.hs[2] ? o.hs : defHS() };
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---------------- 交互 ---------------- */
+$('board').addEventListener('pointerdown', async ev => {
+  ev.preventDefault();
+  if (busy) return;
+  const r = $('board').getBoundingClientRect(), k = Math.floor((ev.clientX - r.left) / r.width * 9) + 1, row = Math.floor((ev.clientY - r.top) / r.height * 9) + 1;
+  if (!inb(row, k)) return;
+  if (G.board[ci(row, k)] > 0) { sel = {r: row, k}; startBounce(); render(); return; }
+  if (!sel) return;
+  const path = findPath([sel.r, sel.k], [row, k]);
+  if (!path) return;                               // 走不过去：原版无反应
+  busy = true; try { await doMove([sel.r, sel.k], [row, k], path); } finally { busy = false; ui(); }
+});
+$('btnNew').onclick = async () => { if (busy) return; busy = true; try { await newClick(); } finally { busy = false; ui(); } };
+$('btnUndo').onclick = async () => {
+  if (busy || !G.undoOn || !G.undo) return; busy = true;
+  try {
+    if (await confirmDlg('“后悔”是要扣分的，继续吗？')) {
+      stopBounce(); sel = null;
+      G.board = G.undo.board.slice(); G.recs = G.undo.recs.map(x => ({...x})); G.score = G.undo.score - 31; G.undoOn = false;
+      ui(); render(); save();
+    }
+  } finally { busy = false; ui(); }
+};
+$('best').onclick = async () => { if (busy) return; busy = true; try { await rankDlg(); } finally { busy = false; } };
+async function toggleLevel() {
+  if (busy || G.tag === 1) return;                 // 走过第一步后锁定，需先“再来”（与原版一致）
+  busy = true;
+  try {
+    const to = G.level === 1 ? 2 : 1;
+    await alertDlg(to === 2 ? '也不用太怕！我也有打盹的时候。' : '好羡慕你！能有这么充裕的时间。');
+    G.level = to; ui(); await newGame();
+  } finally { busy = false; ui(); }
+}
+$('chk').onclick = toggleLevel;
+$('chk').onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleLevel(); } };
+new ResizeObserver(fit).observe($('board'));
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------------- 启动 ---------------- */
+(async () => {
+  fit();
+  if (load()) { ui(); render(); save(); return; }
+  busy = true; try { await newGame(); } finally { busy = false; ui(); }
+})();
+})();
+</script>
+</body>
+</html>
